@@ -26,7 +26,7 @@ Data stays on-device. There is no backend and no analytics.
 
 ## Privacy
 
-OpenCode Go Pacer fetches your signed-in `https://opencode.ai/workspace/{id}/go` page HTML and parses usage locally. It checks for a session cookie (presence only) and never stores or logs the cookie value. Data stays on-device in `chrome.storage.local`.
+OpenCode Go Pacer fetches your signed-in `https://opencode.ai/workspace/{id}/go` page HTML and parses usage locally. It checks for a session cookie (presence only) and never stores or logs the cookie value. Data stays on-device in `chrome.storage.local`. Full policy: [PRIVACY.md](PRIVACY.md).
 
 ## Limitations
 
