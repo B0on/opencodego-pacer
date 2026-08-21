@@ -35,6 +35,8 @@ OpenCode Go Pacer fetches your signed-in `https://opencode.ai/workspace/{id}/go`
 - Needs a signed-in `opencode.ai` browser session in Chrome.
 - Shows usage percentages only (no dollar metrics).
 
+Chrome Web Store graphics and listing copy: [store-assets/](store-assets/). Regenerate PNGs with `npm run render:store-assets`.
+
 ## Development
 
 Requires Node.js 22+ and npm.

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=640,height=400">
+<title>OpenCode Go Pacer store screenshot</title>
+<style>
+:root { color-scheme: dark; font-family: Inter, "Avenir Next", system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; width: 640px; height: 400px; background: #0f1220; color: #e8eaf6; overflow: hidden; }
+.capture {
+  width: 640px; height: 400px; position: relative; overflow: hidden; padding: 38px 32px;
+  background:
+    radial-gradient(circle at 14% 12%, rgba(110, 168, 254, .22) 0, transparent 36%),
+    #0f1220;
+}
+.eyebrow { color: #6ea8fe; font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+h1 { margin: 12px 0 8px; max-width: 270px; font-size: 30px; line-height: 1.02; letter-spacing: -.04em; }
+.lede { width: 240px; margin: 0; color: #9aa1c9; font-size: 13px; line-height: 1.5; }
+.signal {
+  position: absolute; right: 28px; top: 28px; width: 300px; padding: 14px;
+  border: 1px solid #262b4a; border-radius: 18px; background: #171b2e;
+  box-shadow: 0 18px 42px rgba(0,0,0,.45);
+}
+.title { margin: 0 0 10px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #9aa1c9; }
+.pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pill { min-height: 58px; padding: 10px; border-radius: 12px; border: 1px solid #262b4a; background: #1e2340; }
+.pill.elapsed .value { color: #e8eaf6; }
+.pill.used { border-color: rgba(110, 168, 254, .35); background: rgba(110, 168, 254, .12); }
+.pill.used .value { color: #6ea8fe; }
+.label { display:block; font-size: 9px; font-weight: 800; letter-spacing: .12em; color: #9aa1c9; text-transform: uppercase; }
+.value { display:block; margin-top: 6px; font-size: 23px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.pace { margin: 11px 2px 0; color: #ef4444; font-size: 13px; font-weight: 750; }
+.meta { margin: 10px 2px 0; font-size: 12px; font-weight: 700; }
+.meta span { display:block; margin-top: 4px; color:#9aa1c9; font-size: 11px; font-weight: 500; }
+.forecast { margin: 10px 2px 0; padding: 8px 10px; border-left: 2px solid #6ea8fe; color: #c8c8c8; font-size: 10px; line-height: 1.4; }
+.windows { margin-top: 11px; padding-top: 10px; border-top: 1px solid #262b4a; display: flex; flex-direction: column; gap: 7px; }
+.window { padding: 8px 9px; border: 1px solid #262b4a; border-radius: 10px; background: #1e2340; }
+.window.active { border-color: rgba(110, 168, 254, .45); background: rgba(110, 168, 254, .08); }
+.window.alert { border-color: rgba(239, 68, 68, .4); }
+.window-head { display:flex; justify-content:space-between; color:#9aa1c9; font-size:10px; }
+.window-head strong { color: #e8eaf6; font-weight: 700; }
+.track { position: relative; height: 5px; margin-top: 5px; border-radius: 4px; background:#262b4a; overflow:hidden; }
+.pace-fill { position:absolute; inset:0 auto 0 0; height:100%; background: rgba(110,168,254,.25); border-radius:4px; }
+.used-fill { position:absolute; inset:0 auto 0 0; height:100%; background: #6ea8fe; border-radius:4px; }
+.window-foot { display:flex; justify-content:space-between; margin-top: 5px; font-size: 9px; color: #9aa1c9; }
+.flag { color: #ef4444; font-weight: 700; }
+.footer { position:absolute; left:32px; bottom:24px; color:#9aa1c9; font-size:10px; }
+.footer strong { color:#e8eaf6; }
+.ring {
+  position:absolute; left: 270px; bottom: -100px; width: 240px; height: 240px;
+  border: 14px solid #262b4a; border-right-color:#6ea8fe; border-top-color:#6ea8fe;
+  border-radius:50%; opacity:.32; transform:rotate(18deg);
+}
+</style>
+</head>
+<body>
+<main class="capture">
+  <div class="eyebrow">OpenCode Go Pacer · for OpenCode Go</div>
+  <h1>Know if your usage will last.</h1>
+  <p class="lede">Rolling, weekly &amp; monthly pacing from opencode.ai — elapsed vs used, forecast, and window bars.</p>
+  <div class="signal">
+    <p class="title">OpenCode Go Pacer</p>
+    <div class="pills">
+      <div class="pill elapsed"><span class="label">Elapsed</span><span class="value">81.1%</span></div>
+      <div class="pill used"><span class="label">Used</span><span class="value">92%</span></div>
+    </div>
+    <div class="pace">Ahead +10.9pt</div>
+    <div class="meta">OpenCode Go <span>Month resets in 5d 16h</span></div>
+    <div class="forecast">At this pace, Month lasts through reset.</div>
+    <div class="windows">
+      <div class="window">
+        <div class="window-head"><strong>5h</strong><span>5h</span></div>
+        <div class="track"><div class="pace-fill" style="width:0%"></div><div class="used-fill" style="width:0%"></div></div>
+        <div class="window-foot"><span>0% used</span></div>
+      </div>
+      <div class="window alert">
+        <div class="window-head"><strong>Week</strong><span>2d 8h</span></div>
+        <div class="track"><div class="pace-fill" style="width:66.9%"></div><div class="used-fill" style="width:100%"></div></div>
+        <div class="window-foot"><span>100% used</span><span class="flag">rate-limited</span></div>
+      </div>
+      <div class="window active">
+        <div class="window-head"><strong>Month</strong><span>5d 16h</span></div>
+        <div class="track"><div class="pace-fill" style="width:81.1%"></div><div class="used-fill" style="width:92%"></div></div>
+        <div class="window-foot"><span>92% used</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="ring"></div>
+  <div class="footer"><strong>Local-only</strong> · synced 2 min ago · no analytics</div>
+</main>
+</body>
+</html>

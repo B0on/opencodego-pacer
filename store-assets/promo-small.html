@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=440,height=280">
+  <title>OpenCode Go Pacer small promo tile</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, "Avenir Next", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; width: 440px; height: 280px; overflow: hidden; color: #e8eaf6; background: #0f1220; }
+    .tile {
+      position: relative; width: 440px; height: 280px; overflow: hidden; padding: 28px 30px;
+      background:
+        radial-gradient(circle at 82% 12%, rgba(110, 168, 254, .28), transparent 34%),
+        linear-gradient(135deg, #171b2e, #0f1220 62%);
+    }
+    .eyebrow { color: #6ea8fe; font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { width: 220px; margin: 15px 0 8px; font-size: 28px; line-height: .98; letter-spacing: -.05em; }
+    p { width: 195px; margin: 0; color: #9aa1c9; font-size: 12px; line-height: 1.45; }
+    .mini-card {
+      position: absolute; right: 22px; bottom: 22px; width: 168px; padding: 12px;
+      border: 1px solid #262b4a; border-radius: 16px; background: rgba(23, 27, 46, .95);
+      box-shadow: 0 18px 35px rgba(0, 0, 0, .42);
+    }
+    .pills { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .pill { min-height: 46px; padding: 8px; border-radius: 10px; border: 1px solid #262b4a; background: #1e2340; }
+    .pill.used { border-color: rgba(110, 168, 254, .35); background: rgba(110, 168, 254, .12); }
+    .label { display: block; font-size: 7px; font-weight: 800; letter-spacing: .1em; color: #9aa1c9; text-transform: uppercase; }
+    .value { display: block; margin-top: 5px; font-size: 18px; font-weight: 800; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+    .pill.used .value { color: #6ea8fe; }
+    .pace { margin-top: 10px; color: #ef4444; font-size: 10px; font-weight: 750; }
+    .ring {
+      position: absolute; left: 188px; bottom: -120px; width: 245px; height: 245px;
+      border: 13px solid #262b4a; border-right-color: #6ea8fe; border-top-color: #6ea8fe;
+      border-radius: 50%; opacity: .26; transform: rotate(18deg);
+    }
+  </style>
+</head>
+<body>
+  <main class="tile">
+    <div class="eyebrow">OpenCode Go Pacer · for OpenCode Go</div>
+    <h1>Pace your Go usage.</h1>
+    <p>Rolling, weekly &amp; monthly elapsed vs used, right in the toolbar.</p>
+    <div class="mini-card">
+      <div class="pills">
+        <div class="pill elapsed"><span class="label">Elapsed</span><span class="value">81.1%</span></div>
+        <div class="pill used"><span class="label">Used</span><span class="value">92%</span></div>
+      </div>
+      <div class="pace">Ahead +10.9pt</div>
+    </div>
+    <div class="ring"></div>
+  </main>
+</body>
+</html>
