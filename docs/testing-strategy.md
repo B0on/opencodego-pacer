@@ -11,8 +11,8 @@ Follows the Ollama Pacer testing approach: pure domain logic is unit-tested with
 
 ### OpenCode client
 
-- `parse.ts` — parse SSR HTML into `UsageSnapshot`. Use captured fixtures (e.g. `fixtures/plan.html`) covering ok / rate-limited / signed-out / not-subscribed cases.
-- `client.ts` — thin; cookie presence and fetch. Keep network out of tests (inject fetch or test parse only).
+- `parse.ts` — parse the console status JSON into `PlanUsage`. Use captured fixtures (e.g. `fixtures/go-status.json`) covering active, missing meters, null `access`, and malformed meters.
+- `client.ts` — thin; fetch with `x-org-id` and map HTTP/parse failures. Keep network out of tests (inject fetch or test parse only).
 
 ### Toolbar
 

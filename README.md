@@ -2,9 +2,9 @@
 
 Chrome extension that paces your [OpenCode Go](https://opencode.ai) subscription usage against its rolling, weekly, and monthly reset windows.
 
-OpenCode Go tracks usage across three rolling windows (rolling ~5h, weekly 7-day, and monthly). The plan page shows current usage % for each, but not whether your current pace will last until reset. OpenCode Go Pacer fills that gap.
+OpenCode Go tracks usage across three rolling windows (rolling ~5h, weekly 7-day, and monthly). The console shows current usage % for each, but not whether your current pace will last until reset. OpenCode Go Pacer fills that gap.
 
-This project is **not affiliated with, endorsed by, or sponsored by** Anomaly / OpenCode. It reads the public `opencode.ai` plan page and can change without notice.
+This project is **not affiliated with, endorsed by, or sponsored by** Anomaly / OpenCode. It reads OpenCode's console status endpoint and can change without notice.
 
 ## What it shows
 
@@ -22,17 +22,17 @@ Data stays on-device. There is no backend and no analytics.
 1. Clone this repo and run `npm install` then `npm run build`.
 2. Open `chrome://extensions`, enable **Developer mode**.
 3. **Load unpacked** and choose the `dist/` folder.
-4. Open `opencode.ai` in Chrome and sign in.
+4. Open `https://opencode.ai/console` in Chrome and sign in.
 
 ## Privacy
 
-OpenCode Go Pacer fetches your signed-in `https://opencode.ai/workspace/{id}/go` page HTML and parses usage locally. It checks for a session cookie (presence only) and never stores or logs the cookie value. Data stays on-device in `chrome.storage.local`. Full policy: [PRIVACY.md](PRIVACY.md).
+OpenCode Go Pacer calls `https://opencode.ai/console/api/go/status` with your existing session cookie and the workspace ID from your console URL (`/console/{orgId}/go`), then parses the response locally. It never stores or logs the cookie value. Data stays on-device in `chrome.storage.local`. Full policy: [PRIVACY.md](PRIVACY.md).
 
 ## Limitations
 
-- Unofficial. The `opencode.ai` plan page structure can change without notice.
+- Unofficial. The `opencode.ai` console status payload can change without notice.
 - Chrome only (Manifest V3).
-- Needs a signed-in `opencode.ai` browser session in Chrome.
+- Needs a signed-in `opencode.ai` console session in Chrome.
 - Shows usage percentages only (no dollar metrics).
 
 Chrome Web Store graphics and listing copy: [store-assets/](store-assets/). Regenerate PNGs with `npm run render:store-assets`.

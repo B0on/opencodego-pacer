@@ -13,7 +13,7 @@ Status legend: `[ ]` pending, `[x]` done.
 ## Implementation
 - [x] Scaffold project (package.json, tsconfig, vite, manifest)
 - [x] Domain layer (types, pacing math, reset inference)
-- [x] OpenCode client layer (fetch + parse SSR)
+- [x] OpenCode client layer (fetch + parse status JSON)
 - [x] Storage/cache layer
 - [x] Toolbar layer (icon + badge)
 - [x] Background service worker (alarm + orchestration)

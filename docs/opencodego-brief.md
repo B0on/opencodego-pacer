@@ -2,9 +2,9 @@
 
 Chrome extension that paces [OpenCode Go](https://opencode.ai) subscription usage against its reset windows.
 
-Status: requirements ready. Feasibility verified in-browser on 2026-08-21. Data source and auth model documented in [opencodego-feasibility.md](opencodego-feasibility.md).
+Status: requirements ready. Data source and auth model documented in [opencodego-feasibility.md](opencodego-feasibility.md). Updated 2026-10-24 for the console v2 status API.
 
-This project is **not affiliated with, endorsed by, or sponsored by** Anomaly / OpenCode. The data source is the public `opencode.ai/workspace/{id}/go` page (server-side rendered), not an official API, and can change without notice.
+This project is **not affiliated with, endorsed by, or sponsored by** Anomaly / OpenCode. The data source is the console usage API at `https://opencode.ai/console/api/go/status`, not an official public API, and can change without notice.
 
 ## Problem
 
@@ -20,7 +20,7 @@ The official page shows current usage % for each window but does not tell the us
 
 Port the pacing idea from [Ollama Pacer](../ollama-pacer) and [Usage Pacer (Cursor)](../usage-pacer) to OpenCode Go.
 
-- Read current usage % and reset seconds from the `go` plan page SSR payload.
+- Read current usage % and reset seconds from the console status JSON.
 - Derive the cycle window and reset instant from the data returned by the page.
 - Show **used % vs linear average % for today**, plus time left and a depletion forecast.
 - The **weekly window is the primary pacing target**. Rolling and monthly windows are secondary indicators.
@@ -30,10 +30,10 @@ Port the pacing idea from [Ollama Pacer](../ollama-pacer) and [Usage Pacer (Curs
 - **Weekly window is the primary pacing target.** `computePacing()` runs on the weekly window only. Rolling and monthly windows are display-only indicators.
 - **Rolling window** is display-only (short reset, not a pacing target).
 - **Monthly window** is display-only unless weekly is unavailable.
-- **Reset instants are derived from `resetInSec`** (seconds remaining), converted to an absolute epoch using `Date.now()`. The server does not send an absolute timestamp.
-- **Monthly window is assumed to be 30 days.** `MONTHLY_WINDOW_MS = 30d`. Verified against live data (reset ~5.67d remaining at 92% used → elapsed ~81%) — consistent. The page does not expose the absolute cycle start, so this nominal length is used to derive the elapsed-time target for the pacing bar.
-- **Free / unsigned plan degrades gracefully.** If no `weeklyUsage` is present, show "no window" state.
-- **Single active workspace.** The workspace ID (`wrk_...`) is required in the URL. It is resolved once and cached.
+- **Reset instants come from the meter timestamps.** The status payload carries absolute `resetsAt` timestamps; `parseGoStatus()` converts them to `resetInSec` (seconds remaining) for the existing pacing math.
+- **Monthly window is assumed to be 30 days.** `MONTHLY_WINDOW_MS = 30d`. The status API carries `startsAt` for the five-hour and week meters but not for month, and `PlanUsage` does not carry cycle starts, so the pacing bar keeps using a nominal length.
+- **Free / unsigned plan degrades gracefully.** A null status body or null `access` throws `ParseError`; an individual missing meter becomes an unavailable window. If no window is usable, show "no window" state.
+- **Single active workspace.** The workspace ID (`org_...` or `wrk_...`) comes from the console URL (`/console/{id}/go`) and is resolved once and cached.
 - **Refresh failure backoff is out of MVP.** The 5/15-minute cadence is sufficient.
 
 ## Product decisions (locked)
@@ -43,7 +43,7 @@ Port the pacing idea from [Ollama Pacer](../ollama-pacer) and [Usage Pacer (Curs
 | Store name | **OpenCode Go Pacer** |
 | UI language | English only |
 | Platform | Chrome extension, Manifest V3 |
-| Data source | `GET https://opencode.ai/workspace/{workspaceID}/go` SSR HTML, using the logged-in Chrome session. Data stays on-device. No backend. |
+| Data source | `GET https://opencode.ai/console/api/go/status` JSON with `x-org-id`, using the logged-in Chrome session. Data stays on-device. No backend. |
 | Auth | Browser session cookie. **No API key required.** |
 | Surfaces | Toolbar **icon** + **badge** + **popup** |
 | Toolbar icon | Elapsed-time ring of the **weekly** `averagePct` (0–100% at reset) |
@@ -63,16 +63,16 @@ Port the pacing idea from [Ollama Pacer](../ollama-pacer) and [Usage Pacer (Curs
 
 ### Weekly window (pacing)
 
-- `resetInSec` = seconds until reset (from SSR payload).
+- `resetInSec` = seconds until reset (converted from the status payload's `resetsAt`).
 - `now` = current epoch ms.
 - `cycleEnd` = `now + resetInSec * 1000`.
-- `totalWindowMs` = 7 days (604800000 ms). This is a nominal constant because the SSR page does not expose the absolute cycle start.
+- `totalWindowMs` = 7 days (604800000 ms). This is a nominal constant because `PlanUsage` carries only `resetInSec`, not the cycle start.
 - `cycleStart` = `cycleEnd - totalWindowMs`.
 - `elapsedMs` = `now - cycleStart`, clamped to `[0, totalWindowMs]`.
 
 ```
 averagePct     = (elapsedMs / totalWindowMs) * 100
-actualUsedPct  = weekly usage % parsed from page HTML
+actualUsedPct  = weekly usage % from the status payload
 deltaPct       = actualUsedPct - averagePct
 remainingPct   = max(0, 100 - actualUsedPct)
 ```
@@ -108,20 +108,22 @@ else:
 
 ## Data acquisition
 
-Source: `https://opencode.ai/workspace/{workspaceID}/go` (server-side rendered HTML).
+Source: `https://opencode.ai/console/api/go/status` (JSON).
 
-Not affiliated with OpenCode. This is reverse-engineered from the public plan page and can change without notice.
+Not affiliated with OpenCode. This is reverse-engineered from the console's own requests and can change without notice.
 
 ### Auth
 
-- Chrome extension reads **presence only** with `chrome.cookies.getAll({ url: "https://opencode.ai/" })`. It does not store or log cookie values.
-- Service Worker fetches the plan page with `credentials: "include"`. `host_permissions: ["https://opencode.ai/*"]` attaches the session cookie automatically.
+- Service Worker fetches the status endpoint with `credentials: "include"`. `host_permissions: ["https://opencode.ai/*"]` attaches the session cookie automatically.
+- The workspace ID from the console URL is sent as the `x-org-id` header.
+- `401` or `403` means signed out. Cookie values are never read, stored, or logged.
 
 ### Parsing strategy
 
-1. Extract the workspaceID from the URL or a saved setting.
-2. Parse the SSR HTML for the embedded usage JSON containing `rollingUsage`, `weeklyUsage`, and `monthlyUsage`, each with `status`, `resetInSec`, and `usagePercent`.
-3. Detect whether the user is subscribed to Go (look for "OpenCode Go" or the usage payload).
+1. Resolve the workspace ID from an open console tab URL: `/console/{orgId}/go` (or a legacy `/workspace/{id}/go` tab).
+2. Request the status endpoint with `x-org-id`.
+3. Validate and convert the payload in `parseGoStatus()`: `fiveHour` → rolling, `week` → weekly, `month` → monthly. Microcent totals become usage percentages; `resetsAt` becomes `resetInSec`.
+4. A `null` body, null `access`, or no usable meter throws `ParseError` ("No active OpenCode Go subscription").
 
 ## Privacy
 
@@ -140,6 +142,6 @@ Not affiliated with OpenCode. This is reverse-engineered from the public plan pa
 
 ## References
 
-- OpenCode plan page: `https://opencode.ai/workspace/{id}/go`
+- OpenCode console usage API: `https://opencode.ai/console/api/go/status`
 - Sibling products: Usage Pacer (Cursor) and Ollama Pacer.
 - Feasibility doc: [opencodego-feasibility.md](opencodego-feasibility.md)

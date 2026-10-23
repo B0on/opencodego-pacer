@@ -1,8 +1,8 @@
 /**
  * Derive cycle bounds for a rolling window from seconds-remaining and now.
  *
- * The SSR page exposes `resetInSec` (seconds until reset) but no absolute
- * start timestamp, so the cycle start is derived from a nominal window length.
+ * The status payload exposes absolute reset instants, which `parseGoStatus`
+ * converts to `resetInSec`; the cycle start still comes from a nominal length.
  */
 
 export const WEEKLY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // 604800000

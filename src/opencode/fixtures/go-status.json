@@ -1,0 +1,27 @@
+{
+  "product": "go",
+  "access": {
+    "startsAt": "2026-10-01T00:00:00.000Z",
+    "endsAt": "2026-11-01T00:00:00.000Z",
+    "cancelAtPeriodEnd": false,
+    "meters": {
+      "fiveHour": {
+        "usedMicroCents": "120000000",
+        "limitMicroCents": "600000000",
+        "resetsAt": "2026-10-24T05:00:00.000Z",
+        "startsAt": "2026-10-24T00:00:00.000Z"
+      },
+      "week": {
+        "usedMicroCents": "900000000",
+        "limitMicroCents": "1500000000",
+        "resetsAt": "2026-10-27T00:00:00.000Z",
+        "startsAt": "2026-10-20T00:00:00.000Z"
+      },
+      "month": {
+        "usedMicroCents": "1200000000",
+        "limitMicroCents": "3000000000",
+        "resetsAt": "2026-11-01T00:00:00.000Z"
+      }
+    }
+  }
+}

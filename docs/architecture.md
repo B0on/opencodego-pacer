@@ -6,7 +6,7 @@ Master product spec: [opencodego-brief.md](opencodego-brief.md). Fetch contract:
 
 ## Context
 
-The extension reads the user's existing `opencode.ai` web session, pulls current usage from `https://opencode.ai/workspace/{workspaceID}/go`, computes a linear pace on the **weekly** window, and shows:
+The extension reads the user's existing `opencode.ai` console session, pulls current usage from `https://opencode.ai/console/api/go/status` with the workspace ID from the console URL (`/console/{orgId}/go`), computes a linear pace on the **weekly** window, and shows:
 
 - Toolbar **icon**: elapsed-time ring of the **weekly** `averagePct` (0–100% at reset).
 - Toolbar **badge**: one number (remaining / delta / used) + pace color. Based on the **weekly** window.
@@ -22,14 +22,12 @@ flowchart LR
     SW[Service worker]
     Popup[Popup React]
     Alarm[chrome.alarms]
-    Cookies[chrome.cookies]
     Store[chrome.storage.local]
   end
-  OpenCode["opencode.ai/workspace/{id}/go\nGET HTML"]
+  OpenCode["opencode.ai/console/api/go/status\nGET JSON"]
   Alarm --> SW
   Popup -->|refresh / settings| SW
-  SW -->|cookie present?| Cookies
-  SW -->|credentials include| OpenCode
+  SW -->|credentials include + x-org-id| OpenCode
   SW --> Store
   Popup --> Store
   SW -->|setIcon + setBadge| Toolbar[Toolbar]
@@ -40,7 +38,7 @@ flowchart LR
 | Layer | Path | Responsibility |
 |-------|------|----------------|
 | Domain | `src/domain/` | Pure pacing math and view-model (weekly pacing, rolling/monthly display). No `chrome.*`. |
-| OpenCode client | `src/opencode/` | Cookie presence, `GET /go` fetch, SSR HTML parse. |
+| OpenCode client | `src/opencode/` | `GET /console/api/go/status` with `x-org-id`, JSON parsing and validation. |
 | Cache | `src/storage/` | `chrome.storage.local` snapshot + settings. Never stores the cookie. |
 | Toolbar | `src/toolbar/` | Canvas ring icon + badge text/color. |
 | Background | `src/background/` | Alarm, orchestrate fetch → math → icon/badge. |
@@ -48,10 +46,10 @@ flowchart LR
 
 ## Runtime
 
-- **Service worker** is the only privileged context. It owns alarms, cookie checks, network, and `chrome.action.setIcon` / `setBadgeText` / `setBadgeBackgroundColor`.
+- **Service worker** is the only privileged context. It owns alarms, network, and `chrome.action.setIcon` / `setBadgeText` / `setBadgeBackgroundColor`.
 - **Popup** is ephemeral. On open it reads cache, then asks the worker to refresh.
-- **Host fetch:** `https://opencode.ai/workspace/{workspaceID}/go` with `credentials: "include"`. MV3 `host_permissions` attach session cookies automatically; do not copy cookie values into storage or logs.
-- **Signed-out detection:** `chrome.cookies.getAll({ url: "https://opencode.ai/" })` returns no session cookie → signed out. Use presence only.
+- **Host fetch:** `https://opencode.ai/console/api/go/status` with `credentials: "include"` and the `x-org-id` workspace header. MV3 `host_permissions` attach session cookies automatically; do not copy cookie values into storage or logs.
+- **Signed-out detection:** a `401` or `403` from the status endpoint means signed out. The response is the only auth signal; no cookie names are inspected.
 
 ## Icon drawing
 
@@ -95,4 +93,4 @@ The snapshot holds all three windows (structurally separated), with the weekly w
 
 ## Out of scope (do not build)
 
-Notifications, history chart, i18n, account switcher, refresh backoff, per-model breakdown, storing cookies, calling extra endpoints (the plan page is enough).
+Notifications, history chart, i18n, account switcher, refresh backoff, per-model breakdown, storing cookies, calling extra endpoints (the status endpoint is enough).

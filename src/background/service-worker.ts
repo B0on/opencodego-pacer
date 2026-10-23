@@ -9,7 +9,7 @@ import {
   setLastError,
   setWorkspaceId,
 } from "../storage/cache.js";
-import { fetchPlanUsage, OPCODE_HOST } from "../opencode/client.js";
+import { fetchPlanUsage, workspaceIdFromUrl, OPCODE_HOST } from "../opencode/client.js";
 import {
   computePacing,
   forecastFor,
@@ -36,16 +36,15 @@ const INTERVAL_MS: Record<Settings["refreshInterval"], number | null> = {
   manual: null,
 };
 
-const WORKSPACE_RE = /\/workspace\/(wrk_[A-Za-z0-9]+)/;
-
 /** Find a workspace ID from an open opencode.ai tab, if any. */
 async function detectWorkspaceId(): Promise<string | null> {
   const tabs = await chrome.tabs
     .query({ url: `${OPCODE_HOST}/*` })
     .catch(() => [] as chrome.tabs.Tab[]);
   for (const tab of tabs) {
-    const m = tab.url?.match(WORKSPACE_RE);
-    if (m) return m[1];
+    if (!tab.url) continue;
+    const workspaceId = workspaceIdFromUrl(tab.url);
+    if (workspaceId) return workspaceId;
   }
   return null;
 }
@@ -63,7 +62,11 @@ async function refresh(): Promise<RefreshResponse> {
   }
 
   if (!workspaceId) {
-    return { ok: false, signedIn: false, error: "No workspace configured. Open opencode.ai first." };
+    return {
+      ok: false,
+      signedIn: false,
+      error: "Open the OpenCode console (opencode.ai/console) first.",
+    };
   }
 
   const result = await fetchPlanUsage(workspaceId);

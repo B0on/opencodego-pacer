@@ -1,6 +1,6 @@
 export function SignInCTA() {
   const handleClick = () => {
-    void chrome.tabs.create({ url: "https://opencode.ai" });
+    void chrome.tabs.create({ url: "https://opencode.ai/console" });
   };
 
   return (

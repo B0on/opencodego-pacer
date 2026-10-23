@@ -1,52 +1,71 @@
 # Feasibility — OpenCode Go Pacer
 
-Verification performed in-browser on 2026-08-21 to confirm that OpenCode Go subscription usage can be read from the logged-in browser session, and to capture the exact data contract.
+Updated 2026-10-24 for the console v2 API. The original 2026-08-21 pass read the server-rendered `opencode.ai/workspace/{id}/go` page; that page now redirects to the console login, and the console is a SPA that loads usage from its own JSON endpoint.
 
 ## Result: FEASIBLE ✅
 
-The OpenCode Go plan page at `https://opencode.ai/workspace/{workspaceID}/go` is **server-side rendered (SSR)** and embeds the usage data directly in the HTML. This mirrors the Ollama Pacer approach (fetch page HTML, parse locally) and requires no API key, only the existing logged-in session cookie.
+The console status endpoint at `https://opencode.ai/console/api/go/status` returns Go usage as JSON. It requires no API key, only the existing logged-in session cookie and the workspace ID from the console URL.
 
-## Observed SSR payload
+## Status payload
 
-A `GET` to the plan page returns HTML containing a script payload of roughly this shape (verified live):
+A `GET` with `credentials: "include"` and `x-org-id: <workspaceId>` returns `200` and a body shaped like:
 
-```js
-{mine: true, useBalance: false, allowTraining: false, region: ["us","eu","sg","cn"],
- rollingUsage: {status: "ok",           resetInSec: 18000,  usagePercent: 0   },
- weeklyUsage:  {status: "rate-limited", resetInSec: 204740, usagePercent: 100 },
- monthlyUsage: {status: "ok",           resetInSec: 494831, usagePercent: 92  }}
+```json
+{
+  "product": "go",
+  "access": {
+    "startsAt": "2026-10-01T00:00:00.000Z",
+    "endsAt": "2026-11-01T00:00:00.000Z",
+    "cancelAtPeriodEnd": false,
+    "meters": {
+      "fiveHour": { "usedMicroCents": "120000000", "limitMicroCents": "600000000", "resetsAt": "2026-10-24T05:00:00.000Z", "startsAt": "2026-10-24T00:00:00.000Z" },
+      "week":     { "usedMicroCents": "900000000", "limitMicroCents": "1500000000", "resetsAt": "2026-10-27T00:00:00.000Z", "startsAt": "2026-10-20T00:00:00.000Z" },
+      "month":    { "usedMicroCents": "1200000000", "limitMicroCents": "3000000000", "resetsAt": "2026-11-01T00:00:00.000Z" }
+    }
+  }
+}
 ```
 
 ### Fields
 
 | Field | Meaning |
 |-------|---------|
-| `rollingUsage` | Rolling window (reset ~5h). |
-| `weeklyUsage` | Weekly window. The pacing target. |
-| `monthlyUsage` | Monthly window, display-only. |
-| `.status` | `"ok"` or `"rate-limited"`. |
-| `.resetInSec` | **Seconds remaining** until the window resets. |
-| `.usagePercent` | Percentage of the window used (0–100). |
+| `access.meters.fiveHour` | Rolling window (reset ~5h). Mapped to `rolling`. |
+| `access.meters.week` | Weekly window. The pacing target. Mapped to `weekly`. |
+| `access.meters.month` | Monthly window, display-only. Mapped to `monthly`. |
+| `.usedMicroCents` | Window usage in microcents. Decimal string; a JSON number is also accepted. |
+| `.limitMicroCents` | Window limit in microcents. Decimal string; a JSON number is also accepted. |
+| `.resetsAt` | Absolute ISO-8601 reset instant. |
+| `.startsAt` | Optional ISO-8601 window start. `fiveHour.startsAt` can be `null`. Not used by the parser. |
 
 ### Key contract notes
 
-- **`resetInSec` is seconds-remaining, not an absolute timestamp.** The extension must convert to an absolute epoch via `now + resetInSec * 1000`. This differs from Ollama's `data-time` (absolute ISO).
-- **Total window length is a nominal constant (7 days for weekly).** The page does not expose the cycle start; the extension derives `cycleStart = cycleEnd - totalWindowMs`.
-- The workspace ID (`wrk_...`) is required in the URL path. It must be resolved (e.g. from the workspace URL) and cached.
-- Go subscription detection: the page renders "OpenCode Go" and exposes the usage payload. If the user is not subscribed, the payload/segments may be absent → degrade gracefully.
+- **`resetsAt` is absolute.** `parseGoStatus()` converts it to `resetInSec = max(0, round((Date.parse(resetsAt) - now) / 1000))` for the existing pacing math.
+- **Microcents are BigInt-scale.** Parse them as decimal strings so values above `Number.MAX_SAFE_INTEGER` keep their precision.
+- **Usage percent is derived.** `usagePercent = round(used * 100 / limit)`, clamped to 0–100. `limit <= 0` yields 0. `status` is `rate-limited` when `used >= limit` and `limit > 0`, otherwise `ok`.
+- **Partial payloads degrade per window.** A missing or malformed meter becomes `{status: "unavailable", resetInSec: 0, usagePercent: 0}`.
+- **No subscription is a distinct case.** A `200` body of `null`, a null or missing `access`, or no usable meter throws `ParseError` ("No active OpenCode Go subscription").
+- **Unauthenticated is a `401`.** The body is `{"_tag":"Unauthorized"}`.
 
 ## Auth model
 
-- Same as Ollama Pacer: Service Worker `fetch` with `credentials: "include"`, `host_permissions: ["https://opencode.ai/*"]` attaches the session cookie.
-- Cookie presence checked with `chrome.cookies.getAll({ url: "https://opencode.ai/" })` — presence only, never stored.
+- Service Worker `fetch` with `credentials: "include"`; `host_permissions: ["https://opencode.ai/*"]` attaches the session cookie.
+- The workspace ID (`org_...` or `wrk_...`) is sent as the `x-org-id` header.
+- `401` or `403` means signed out. No cookie values are read, stored, or logged.
 - No API key required.
+
+## Workspace ID resolution
+
+- Current console URLs carry the ID under `/console/`: `https://opencode.ai/console/org_ABC123/go` or `https://opencode.ai/console/wrk_01K46JDFR0E75SG2Q8K172KF3Y`.
+- The legacy `/workspace/{wrk_...}/go` path is still accepted for tabs opened before the v2 console.
+- Other hosts, `/console/login`, and `/go` without an ID return null.
 
 ## Comparison to Ollama Pacer
 
 | Aspect | Ollama Pacer | OpenCode Go Pacer |
 |--------|--------------|-------------------|
-| URL | `ollama.com/settings` | `opencode.ai/workspace/{id}/go` |
-| Reset info | absolute `data-time` | `resetInSec` (seconds remaining) |
+| URL | `ollama.com/settings` | `opencode.ai/console/api/go/status` |
+| Reset info | absolute `data-time` | absolute `resetsAt` |
 | Windows | weekly + session | rolling + weekly + monthly |
-| Parsing | `% used` text + `data-time` | SSR JSON with `usagePercent`/`resetInSec` |
-| Auth | session cookie | session cookie |
+| Parsing | `% used` text + `data-time` | JSON with microcent totals and `resetsAt` |
+| Auth | session cookie | session cookie + `x-org-id` |

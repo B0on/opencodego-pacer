@@ -1,6 +1,6 @@
 export type WindowStatus = "ok" | "rate-limited" | "unavailable";
 
-/** Usage for a single reset window, as parsed from the SSR page. */
+/** Usage for a single reset window, as parsed from the console status payload. */
 export interface UsageWindow {
   status: WindowStatus;
   /** Seconds remaining until the window resets. */
@@ -9,7 +9,7 @@ export interface UsageWindow {
   usagePercent: number;
 }
 
-/** Raw usage payload parsed from the OpenCode Go plan page. */
+/** Raw usage payload parsed from the OpenCode console status endpoint. */
 export interface PlanUsage {
   rolling: UsageWindow;
   weekly: UsageWindow;

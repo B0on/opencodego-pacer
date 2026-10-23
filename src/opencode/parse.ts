@@ -1,85 +1,74 @@
-import type { PlanUsage, UsageWindow, WindowStatus } from "../domain/types.js";
+import type { PlanUsage, UsageWindow } from "../domain/types.js";
 
 export class ParseError extends Error {}
 
-interface RawWindow {
-  status: string;
-  resetInSec: number;
-  usagePercent: number;
+type JsonObject = Record<string, unknown>;
+
+function asObject(value: unknown): JsonObject | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  return value as JsonObject;
 }
 
-function normalizeStatus(s: string | undefined): WindowStatus {
-  if (s === "ok" || s === "rate-limited") return s;
-  return "unavailable";
-}
-
-function normalizeWindow(w: RawWindow | undefined): UsageWindow {
-  if (!w || typeof w.usagePercent !== "number") {
-    return { status: "unavailable", resetInSec: 0, usagePercent: 0 };
+function toBigInt(value: unknown): bigint | null {
+  if (typeof value === "string" && /^-?\d+$/.test(value)) return BigInt(value);
+  if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value)) {
+    return BigInt(value);
   }
+  return null;
+}
+
+function unavailable(): UsageWindow {
+  return { status: "unavailable", resetInSec: 0, usagePercent: 0 };
+}
+
+function toWindow(value: unknown, now: number): UsageWindow {
+  const meter = asObject(value);
+  if (!meter) return unavailable();
+
+  const used = toBigInt(meter.usedMicroCents);
+  const limit = toBigInt(meter.limitMicroCents);
+  const resetsAt = typeof meter.resetsAt === "string" ? Date.parse(meter.resetsAt) : Number.NaN;
+  if (used === null || limit === null || Number.isNaN(resetsAt)) return unavailable();
+
+  let usagePercent = 0;
+  if (limit > 0n) {
+    const rounded = (used * 100n + limit / 2n) / limit;
+    usagePercent = Math.min(100, Math.max(0, Number(rounded)));
+  }
+
   return {
-    status: normalizeStatus(w.status),
-    resetInSec: Number.isFinite(w.resetInSec) ? w.resetInSec : 0,
-    usagePercent: Math.min(100, Math.max(0, w.usagePercent)),
+    status: limit > 0n && used >= limit ? "rate-limited" : "ok",
+    resetInSec: Math.max(0, Math.round((resetsAt - now) / 1000)),
+    usagePercent,
   };
 }
 
 /**
- * Parse the SSR page HTML into a PlanUsage.
+ * Convert the console status JSON into a PlanUsage.
  *
- * The page embeds a serialized payload of roughly:
- *   {mine:true, ... rollingUsage:{status:"ok",resetInSec:18000,usagePercent:0},
- *    weeklyUsage:{...}, monthlyUsage:{...}}
- *
- * We locate the three window objects by regex on their keys, then extract the
- * contained object literal. This is tolerant to the surrounding Solid Start
- * hydration wrapper (`$R[...]`, `new Date(...)`, etc.).
+ * The status endpoint returns `{access: {meters: {fiveHour, week, month}}}`
+ * or `null` when no Go subscription is active. Meters carry microcent totals
+ * as decimal strings and reset instants as ISO-8601 timestamps. Anything that
+ * does not match that shape degrades to an unavailable window; a payload with
+ * no usable window at all throws ParseError.
  */
-export function parsePlanHtml(html: string): PlanUsage {
-  const weekly = extractWindow(html, "weeklyUsage");
-  const rolling = extractWindow(html, "rollingUsage");
-  const monthly = extractWindow(html, "monthlyUsage");
+export function parseGoStatus(json: unknown, now: number): PlanUsage {
+  const root = asObject(json);
+  const access = root ? asObject(root.access) : null;
+  if (!access) throw new ParseError("No active OpenCode Go subscription");
 
-  const weeklyW = normalizeWindow(weekly);
-  const rollingW = normalizeWindow(rolling);
-  const monthlyW = normalizeWindow(monthly);
+  const meters = asObject(access.meters);
+  const rolling = toWindow(meters?.fiveHour, now);
+  const weekly = toWindow(meters?.week, now);
+  const monthly = toWindow(meters?.month, now);
 
-  if (weeklyW.status === "unavailable" &&
-      rollingW.status === "unavailable" &&
-      monthlyW.status === "unavailable") {
-    throw new ParseError("No OpenCode Go usage window found in page");
+  if (
+    rolling.status === "unavailable" &&
+    weekly.status === "unavailable" &&
+    monthly.status === "unavailable"
+  ) {
+    throw new ParseError("No active OpenCode Go subscription");
   }
 
-  return {
-    rolling: rollingW,
-    weekly: weeklyW,
-    monthly: monthlyW,
-  };
-}
-
-function extractWindow(html: string, key: string): RawWindow | undefined {
-  // Match `keyName:...` followed by an object literal. The SSR wrapper may
-  // insert a Solid Start reference (`$R[NN]=`) between the key and the brace.
-  // The object has no nested braces, so `{[^}]*}` captures it safely.
-  const re = new RegExp(`${key}:\\$R\\[\\d+\\]=\\{([^}]*)\\}|${key}:\\{([^}]*)\\}`);
-  const m = html.match(re);
-  if (!m) return undefined;
-
-  const body = m[1] ?? m[2];
-  const status = matchStr(body, "status");
-  const resetInSec = matchNum(body, "resetInSec");
-  const usagePercent = matchNum(body, "usagePercent");
-  return { status: status ?? "", resetInSec: resetInSec ?? 0, usagePercent: usagePercent ?? 0 };
-}
-
-function matchStr(body: string, key: string): string | undefined {
-  const re = new RegExp(`${key}:"([^"]*)"`);
-  const m = body.match(re);
-  return m ? m[1] : undefined;
-}
-
-function matchNum(body: string, key: string): number | undefined {
-  const re = new RegExp(`${key}:(\\d+)`);
-  const m = body.match(re);
-  return m ? Number(m[1]) : undefined;
+  return { rolling, weekly, monthly };
 }

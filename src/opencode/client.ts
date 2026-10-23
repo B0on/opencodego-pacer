@@ -1,7 +1,9 @@
-import { parsePlanHtml, ParseError } from "./parse.js";
+import { parseGoStatus, ParseError } from "./parse.js";
 import type { PlanUsage } from "../domain/types.js";
 
 export const OPCODE_HOST = "https://opencode.ai";
+
+const GO_STATUS_URL = `${OPCODE_HOST}/console/api/go/status`;
 
 export interface FetchResult {
   ok: boolean;
@@ -11,25 +13,27 @@ export interface FetchResult {
 }
 
 /**
- * Fetch the Go plan page for the given workspace and parse its usage.
+ * Fetch Go usage for the given workspace (org) ID.
  *
- * Signed-in status is determined by the fetch itself: a signed-in request
- * returns a page that parses into a PlanUsage; a signed-out request redirects
- * to a login page whose HTML contains no usage windows, which surfaces as a
- * parse failure. This avoids depending on any specific cookie name.
+ * The console is a SPA, so usage comes from its JSON status endpoint rather
+ * than page HTML. `credentials: "include"` attaches the session cookie and
+ * the `x-org-id` header selects the workspace. Signed-in status comes from
+ * the response itself: 401/403 means no session.
  *
  * Resolves ok=false (not throws) on failure so the caller can keep the previous
- * cache. `credentials:"include"` attaches the session cookie.
+ * cache.
  */
 export async function fetchPlanUsage(workspaceId: string): Promise<FetchResult> {
   if (!workspaceId) {
     return { ok: false, usage: null, signedIn: false, error: "missing workspace id" };
   }
 
-  const url = `${OPCODE_HOST}/workspace/${workspaceId}/go`;
   let res: Response;
   try {
-    res = await fetch(url, { credentials: "include" });
+    res = await fetch(GO_STATUS_URL, {
+      credentials: "include",
+      headers: { "x-org-id": workspaceId },
+    });
   } catch (e) {
     return {
       ok: false,
@@ -38,26 +42,56 @@ export async function fetchPlanUsage(workspaceId: string): Promise<FetchResult> 
       error: `fetch failed: ${(e as Error).message}`,
     };
   }
+  if (res.status === 401 || res.status === 403) {
+    return { ok: false, usage: null, signedIn: false, error: "not signed in" };
+  }
   if (!res.ok) {
     return {
       ok: false,
       usage: null,
-      signedIn: false,
+      signedIn: true,
       error: `HTTP ${res.status}`,
     };
   }
 
-  const html = await res.text();
+  let json: unknown;
   try {
-    const usage = parsePlanHtml(html);
+    json = await res.json();
+  } catch {
+    return { ok: false, usage: null, signedIn: true, error: "invalid response" };
+  }
+
+  try {
+    const usage = parseGoStatus(json, Date.now());
     return { ok: true, usage, signedIn: true, error: null };
   } catch (e) {
-    // Could be signed out (login page) or an upstream HTML change.
     return {
       ok: false,
       usage: null,
-      signedIn: false,
-      error: e instanceof ParseError ? "not signed in or usage unavailable" : "parse failed",
+      signedIn: true,
+      error: e instanceof ParseError ? e.message : "invalid response",
     };
   }
+}
+
+/**
+ * Extract the workspace (org) ID from an open OpenCode console tab URL.
+ *
+ * New console URLs carry `org_...` or `wrk_...` under `/console/`; the legacy
+ * `/workspace/{id}/go` path is still accepted for tabs opened before the v2
+ * console. Returns null for any other host or path.
+ */
+export function workspaceIdFromUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.hostname !== "opencode.ai") return null;
+
+  const match =
+    parsed.pathname.match(/^\/console\/((?:org|wrk)_[A-Za-z0-9]+)(?:\/|$)/) ??
+    parsed.pathname.match(/^\/workspace\/(wrk_[A-Za-z0-9]+)(?:\/|$)/);
+  return match ? match[1] : null;
 }
