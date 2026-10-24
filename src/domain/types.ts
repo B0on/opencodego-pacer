@@ -7,6 +7,8 @@ export interface UsageWindow {
   resetInSec: number;
   /** Percentage of the window used (0–100). */
   usagePercent: number;
+  /** Real length of the current window in ms. */
+  windowMs: number;
 }
 
 /** Raw usage payload parsed from the OpenCode console status endpoint. */

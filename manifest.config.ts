@@ -3,7 +3,7 @@ import { defineManifest } from "@crxjs/vite-plugin";
 export default defineManifest({
   manifest_version: 3,
   name: "OpenCode Go Pacer",
-  version: "0.1.0",
+  version: "0.1.2",
   description:
     "Paces your OpenCode Go subscription usage against its weekly reset window.",
   permissions: ["storage", "cookies", "alarms", "offscreen", "tabs"],

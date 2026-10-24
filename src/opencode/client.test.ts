@@ -57,9 +57,9 @@ describe("fetchPlanUsage", () => {
       signedIn: true,
       error: null,
       usage: {
-        rolling: { status: "ok", resetInSec: 18000, usagePercent: 20 },
-        weekly: { status: "ok", resetInSec: 259200, usagePercent: 60 },
-        monthly: { status: "ok", resetInSec: 691200, usagePercent: 40 },
+        rolling: { status: "ok", resetInSec: 18000, usagePercent: 20, windowMs: 18000000 },
+        weekly: { status: "ok", resetInSec: 259200, usagePercent: 60, windowMs: 604800000 },
+        monthly: { status: "ok", resetInSec: 691200, usagePercent: 40, windowMs: 2678400000 },
       },
     });
   });

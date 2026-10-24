@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { computePacing, forecastWeekly, badgeColor, type Forecast } from "./pacing";
+import {
+  computePacing,
+  forecastWeekly,
+  badgeColor,
+  windowLengthMs,
+  WINDOW_MS,
+  type Forecast,
+} from "./pacing";
+import type { UsageWindow } from "./types";
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const now = Date.UTC(2026, 7, 21, 12, 0, 0); // 2026-08-21T12:00:00Z
@@ -28,6 +36,34 @@ describe("computePacing", () => {
   it("clamps usage to [0,100]", () => {
     const p = computePacing(120, WEEK / 2 / 1000, now);
     expect(p.actualUsedPct).toBe(100);
+  });
+});
+
+describe("windowLengthMs", () => {
+  const base = { status: "ok", resetInSec: 3600, usagePercent: 10 } as const;
+  const oldSnapshot = base as unknown as UsageWindow;
+
+  it("returns the parsed window length when it is positive and finite", () => {
+    const w: UsageWindow = { ...base, windowMs: 31 * 24 * 60 * 60 * 1000 };
+    expect(windowLengthMs("monthly", w)).toBe(31 * 24 * 60 * 60 * 1000);
+  });
+
+  it("falls back to the nominal length when windowMs is missing (old snapshot)", () => {
+    expect(windowLengthMs("rolling", oldSnapshot)).toBe(WINDOW_MS.rolling);
+    expect(windowLengthMs("weekly", oldSnapshot)).toBe(WINDOW_MS.weekly);
+    expect(windowLengthMs("monthly", oldSnapshot)).toBe(WINDOW_MS.monthly);
+  });
+
+  it("falls back to the nominal length when windowMs is zero", () => {
+    expect(windowLengthMs("rolling", { ...base, windowMs: 0 })).toBe(WINDOW_MS.rolling);
+    expect(windowLengthMs("weekly", { ...base, windowMs: 0 })).toBe(WINDOW_MS.weekly);
+    expect(windowLengthMs("monthly", { ...base, windowMs: 0 })).toBe(WINDOW_MS.monthly);
+  });
+
+  it("falls back to the nominal length when windowMs is NaN", () => {
+    expect(windowLengthMs("rolling", { ...base, windowMs: Number.NaN })).toBe(WINDOW_MS.rolling);
+    expect(windowLengthMs("weekly", { ...base, windowMs: Number.NaN })).toBe(WINDOW_MS.weekly);
+    expect(windowLengthMs("monthly", { ...base, windowMs: Number.NaN })).toBe(WINDOW_MS.monthly);
   });
 });
 

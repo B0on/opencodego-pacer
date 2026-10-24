@@ -3,7 +3,7 @@ import type { BadgeMode, RefreshInterval } from "../domain/types.js";
 import {
   computePacing,
   forecastFor,
-  WINDOW_MS,
+  windowLengthMs,
   WINDOW_LABEL,
   type WindowKey,
 } from "../domain/pacing.js";
@@ -101,7 +101,7 @@ export function App() {
 
   const now = Date.now();
   const win = snapshot.plan[active];
-  const totalMs = WINDOW_MS[active];
+  const totalMs = windowLengthMs(active, win);
   const pace = computePacing(win.usagePercent, win.resetInSec, now, totalMs);
   const forecast = forecastFor(pace, totalMs);
 
@@ -133,7 +133,7 @@ export function App() {
             key={key}
             title={title}
             window={snapshot.plan[key]}
-            totalMs={WINDOW_MS[key]}
+            totalMs={windowLengthMs(key, snapshot.plan[key])}
             active={key === active}
             onClick={() => void handleSetActive(key)}
           />

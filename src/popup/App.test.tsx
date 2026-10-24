@@ -56,6 +56,33 @@ describe("App", () => {
     expect(screen.getByText("Month")).toBeInTheDocument();
   });
 
+  it("uses the 31-day monthly window length for elapsed pace", async () => {
+    const snapshot = {
+      plan: {
+        rolling: { status: "ok", resetInSec: 18000, usagePercent: 10, windowMs: 5 * 60 * 60 * 1000 },
+        weekly: {
+          status: "ok",
+          resetInSec: 300000,
+          usagePercent: 30,
+          windowMs: 7 * 24 * 60 * 60 * 1000,
+        },
+        monthly: {
+          status: "ok",
+          resetInSec: (30 * 24 + 17) * 60 * 60,
+          usagePercent: 0,
+          windowMs: 31 * 24 * 60 * 60 * 1000,
+        },
+      },
+      fetchedAt: Date.now(),
+    };
+
+    stubState(snapshot, okSettings, null, true);
+    render(<App />);
+    await waitFor(() => expect(screen.getByText("Elapsed")).toBeInTheDocument());
+    // 7h elapsed of 31d, rather than the 0% a 30-day nominal window gives.
+    expect(screen.getByText("0.9%")).toBeInTheDocument();
+  });
+
   it("shows error when no snapshot and error set", async () => {
     stubState(null, okSettings, "HTTP 500", true);
     render(<App />);

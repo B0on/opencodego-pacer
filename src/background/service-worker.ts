@@ -14,7 +14,7 @@ import {
   computePacing,
   forecastFor,
   badgeColor,
-  WINDOW_MS,
+  windowLengthMs,
   type WindowKey,
 } from "../domain/pacing.js";
 import type { Settings, UsageSnapshot } from "../domain/types.js";
@@ -103,7 +103,7 @@ async function renderToolbarFrom(
 
   const active = settings.activeWindow ?? "monthly";
   const win = snapshot.plan[active as WindowKey];
-  const totalMs = WINDOW_MS[active as WindowKey];
+  const totalMs = windowLengthMs(active as WindowKey, win);
   const pace = computePacing(win.usagePercent, win.resetInSec, now, totalMs);
   const forecast = forecastFor(pace, totalMs);
   const color = badgeColor(pace.deltaPct, forecast);

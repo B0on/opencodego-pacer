@@ -1,4 +1,4 @@
-import type { PaceView } from "./types";
+import type { PaceView, UsageWindow } from "./types";
 import { WEEKLY_WINDOW_MS, cycleBounds, elapsedFraction } from "./reset.js";
 
 export type WindowKey = "rolling" | "weekly" | "monthly";
@@ -6,8 +6,13 @@ export type WindowKey = "rolling" | "weekly" | "monthly";
 export const WINDOW_MS: Record<WindowKey, number> = {
   rolling: 5 * 60 * 60 * 1000, // 5 hours
   weekly: WEEKLY_WINDOW_MS, // 7 days
-  monthly: 30 * 24 * 60 * 60 * 1000, // calendar month (30d)
+  monthly: 30 * 24 * 60 * 60 * 1000, // fallback only (real month may be 28–31d)
 };
+
+/** Real window length from the payload, falling back to the nominal length. */
+export function windowLengthMs(key: WindowKey, w: UsageWindow): number {
+  return Number.isFinite(w.windowMs) && w.windowMs > 0 ? w.windowMs : WINDOW_MS[key];
+}
 
 export const WINDOW_LABEL: Record<WindowKey, string> = {
   rolling: "5h",
@@ -74,8 +79,8 @@ export function forecastFor(
 }
 
 /** Weekly-only convenience wrapper kept for compatibility. */
-export function forecastWeekly(pace: PaceView): Forecast {
-  return forecastFor(pace, WEEKLY_WINDOW_MS);
+export function forecastWeekly(pace: PaceView, w?: UsageWindow): Forecast {
+  return forecastFor(pace, w ? windowLengthMs("weekly", w) : WEEKLY_WINDOW_MS);
 }
 
 export type PaceColor = "green" | "yellow" | "red";

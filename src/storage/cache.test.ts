@@ -33,9 +33,9 @@ vi.stubGlobal("chrome", chromeMock);
 
 const snapshot: UsageSnapshot = {
   plan: {
-    rolling: { status: "ok", resetInSec: 18000, usagePercent: 0 },
-    weekly: { status: "ok", resetInSec: 204419, usagePercent: 100 },
-    monthly: { status: "ok", resetInSec: 494510, usagePercent: 92 },
+    rolling: { status: "ok", resetInSec: 18000, usagePercent: 0, windowMs: 18000000 },
+    weekly: { status: "ok", resetInSec: 204419, usagePercent: 100, windowMs: 604800000 },
+    monthly: { status: "ok", resetInSec: 494510, usagePercent: 92, windowMs: 2678400000 },
   },
   fetchedAt: 1000,
 };
